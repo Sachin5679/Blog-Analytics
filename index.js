@@ -1,5 +1,7 @@
 const express = require('express');
 const axios = require('axios');
+const _ = require('lodash');
+
 require('dotenv').config();
 
 const app = express();
@@ -12,9 +14,22 @@ app.get('/api/blog-stats', async(req, res) => {
                 'x-hasura-admin-secret': process.env.ADMIN_SECRET
             }
         });
-        res.json(response.data)
+        const blogs = response.data.blogs;
+        const count = _.size(blogs);
+        const longestTitle = _.maxBy(blogs, (blog) => blog.title.length);
+        const privacyExists = _.filter(blogs, (blog) => blog.title && _.includes(blog.title.toLowerCase(), 'privacy'))
+        const privacyCount = privacyExists.length;
+        const uniqueTitles = _.uniqBy(blogs, 'title');
+        res.json({
+            count,
+            longestTitle,
+            privacyCount,
+            uniqueTitles,
+        })
+        
     } catch(err) {
-        res.status(500).json({error: "Error"});
+        console.error('Error fetching data:', err);
+        res.status(500).json({ error: err.message || 'Internal Server Error' });
     }
 })
 
