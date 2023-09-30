@@ -7,14 +7,37 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.get('/api/blog-stats', async(req, res) => {
+let blogs;
+
+async function fetchBlogs() {
     try{
         const response = await axios.get('https://intent-kit-16.hasura.app/api/rest/blogs', {
             headers: {
                 'x-hasura-admin-secret': process.env.ADMIN_SECRET
             }
         });
-        const blogs = response.data.blogs;
+        blogs = response.data.blogs;
+    } catch(err) {
+        console.error('Error fetching data:', err);
+        throw err;
+    }
+}
+
+fetchBlogs()
+    .then(() => {
+        app.listen(port, () => {
+            console.log(`Listening on localhost:${port}`);
+        });
+    })
+    .catch((err) => {
+        console.error('Failed to start server:', err);
+    });
+
+app.get('/api/blog-stats', async(req, res) => {
+    try{
+        if (!blogs) {
+            await fetchBlogs();
+        }
         const count = _.size(blogs);
         const longestTitle = _.maxBy(blogs, (blog) => blog.title.length);
         const privacyExists = _.filter(blogs, (blog) => blog.title && _.includes(blog.title.toLowerCase(), 'privacy'))
@@ -33,4 +56,13 @@ app.get('/api/blog-stats', async(req, res) => {
     }
 })
 
-app.listen(port, () => console.log(`Listening on localhost:${port}`))
+app.get('/api/blog-search/', (req, res) => {
+    const query = req.query.query;
+    if (!query) {
+        return res.status(400).json({error: "Missing parameter"});
+    }
+    const results = blogs.filter((blog) => {
+        return blog.title.toLowerCase().includes(query.toLowerCase())
+    })
+    res.json({results: results})
+})
