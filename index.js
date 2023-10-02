@@ -38,11 +38,16 @@ app.get('/api/blog-stats', async(req, res) => {
         if (!blogs) {
             await fetchBlogs();
         }
-        const count = _.size(blogs);
-        const longestTitle = _.maxBy(blogs, (blog) => blog.title.length);
-        const privacyExists = _.filter(blogs, (blog) => blog.title && _.includes(blog.title.toLowerCase(), 'privacy'))
+        const memoizedSize = _.memoize(_.size);
+        const memoizedMaxBy = _.memoize(_.maxBy);
+        const memoizedFilter = _.memoize(_.filter);
+        const memoizedUniqBy = _.memoize(_.uniqBy);
+
+        const count = memoizedSize(blogs);
+        const longestTitle = memoizedMaxBy(blogs, (blog) => blog.title.length);
+        const privacyExists = memoizedFilter(blogs, (blog) => blog.title && _.includes(blog.title.toLowerCase(), 'privacy'))
         const privacyCount = privacyExists.length;
-        const uniqueTitles = _.uniqBy(blogs, 'title');
+        const uniqueTitles = memoizedUniqBy(blogs, 'title');
         res.json({
             count,
             longestTitle,
